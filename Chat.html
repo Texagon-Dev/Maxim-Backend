@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0">
+  <title>Chat Application
+  </title>
+  <link rel="stylesheet"
+    href="assets/styles.css" />
+
+  <link
+    href="https://cdn.jsdelivr.net/npm/tailwindcss@2.0.2/dist/tailwind.min.css"
+    rel="stylesheet">
+</head>
+
+<body
+  class="font-sans bg-gray-200">
+  <header>
+    <div class="nav-logo">
+      <h4
+        style="text-transform: uppercase;">
+        Maxim</h4>
+    </div>
+    <nav>
+      <ul class="nav-link"
+        id="nav-list">
+        <li><a
+            href="#projects">Projects</a>
+        </li>
+        <li><a
+            href="#about">Chat</a>
+        </li>
+        <li><a
+            href="contact.html">Contact</a>
+        </li>
+        <a class="nav-button"
+          href="files/resume.pdf"><button>Resume</button></a>
+      </ul>
+      <div
+        class="menu-button">
+      </div>
+    </nav>
+  </header>
+  <main
+    class="flex flex-col items-center justify-center min-h-screen p-6 bg-gray-200">
+    <div id="chat-area"
+      class="w-full max-w-5xl bg-white rounded-lg shadow-md p-6">
+      <div
+        class="chat-messages overflow-auto h-96 mb-4">
+      </div>
+      <div
+        class="chat-input bg-gray-100 rounded-lg p-4">
+        <input type="text"
+          id="message-input"
+          placeholder="Type your message here..."
+          class="w-full p-2 rounded-lg outline-none" />
+        <button
+          id="send-button"
+          class="w-full mt-2 p-2 rounded-lg bg-blue-500 text-white">Send</button>
+      </div>
+    </div>
+  </main>
+  <footer>
+    <div class="contact-information">
+      <h2>BIN'S HOUSE</h2>
+    </div>
+    <div class="contact-information-text">
+      <dl>
+        <dt><b>Communities</b></dt>
+        <dd>
+          <a href="https://www.spotify.com/us/about-us/contact/" class="mh-footer-primary svelte-12h6dnj" data-ga-category="menu" data-ga-action="about">About</a>
+        </dd>
+        <dd><a href="https://www.spotifyjobs.com/" class="mh-footer-primary svelte-12h6dnj" data-ga-category="menu" data-ga-action="jobs">Jobs</a>
+        </dd>
+        <dd><a href="https://newsroom.spotify.com/" class="mh-footer-primary svelte-12h6dnj" data-ga-category="menu" data-ga-action="press">Donation</a> 
+        </dd>
+      </dl>
+      <dl>
+        <dt><b>Our Projects</b></dt>
+        <dd>
+          <a href="https://www.spotify.com/us/about-us/contact/" class="mh-footer-primary svelte-12h6dnj" data-ga-category="menu" data-ga-action="about">About</a>
+        </dd>
+        <dd><a href="https://www.spotifyjobs.com/" class="mh-footer-primary svelte-12h6dnj" data-ga-category="menu" data-ga-action="jobs">Jobs</a>
+        </dd>
+        <dd><a href="https://newsroom.spotify.com/" class="mh-footer-primary svelte-12h6dnj" data-ga-category="menu" data-ga-action="press">For the Record</a> 
+        </dd>
+      </dl>
+      <dl>
+        <dt><b>Support</b></dt>
+        <dd>
+          <a href="https://www.spotify.com/us/about-us/contact/" class="mh-footer-primary svelte-12h6dnj" data-ga-category="menu" data-ga-action="about">About</a>
+        </dd>
+        <dd><a href="https://www.spotifyjobs.com/" class="mh-footer-primary svelte-12h6dnj" data-ga-category="menu" data-ga-action="jobs">Jobs</a>
+        </dd>
+        <dd><a href="https://newsroom.spotify.com/" class="mh-footer-primary svelte-12h6dnj" data-ga-category="menu" data-ga-action="press">For the Record</a> 
+        </dd>
+      </dl>
+    </div>
+  </footer>
+  <script
+    src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const sendButton = document.getElementById('send-button');
+      const chatInput = document.getElementById('message-input');
+      const chatMessages = document.querySelector('.chat-messages');
+
+      sendButton.addEventListener('click', () => {
+        const userMessage = chatInput.value;
+        sendMessage(userMessage);
+      });
+
+      chatInput.addEventListener('keypress', (event) => {
+        if (event.key === 'Enter') {
+          const userMessage = chatInput.value;
+          sendMessage(userMessage);
+        }
+      });
+
+      async function sendMessage(query) {
+        if (query.trim() !== '') {
+          appendUserMessage(query);
+          chatInput.value = '';
+
+          try {
+            const res = await axios.post('http://localhost:3000/chat', { query });
+            const botResponse = res.data.output.text;
+            appendBotResponse(botResponse);
+          } catch (error) {
+            console.log(error);
+            const errorMessage = "I'm sorry, I'm having trouble connecting to the server.";
+            appendBotResponse(errorMessage);
+          }
+        }
+      }
+
+      function appendUserMessage(message) {
+        const userMessageElement = document.createElement('div');
+        userMessageElement.classList.add('user-message', 'text-left', 'bg-gray-300', 'rounded-lg', 'p-4', 'mb-2');
+        userMessageElement.textContent = message;
+        chatMessages.appendChild(userMessageElement);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+
+      function appendBotResponse(message) {
+        const botResponseElement = document.createElement('div');
+        botResponseElement.classList.add('bot-response', 'text-right', 'bg-gray-300', 'rounded-lg', 'p-4','mb-2');
+        botResponseElement.textContent = message;
+        chatMessages.appendChild(botResponseElement);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+    });
+  </script>
+</body>
+
+</html>

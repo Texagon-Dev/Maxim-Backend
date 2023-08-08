@@ -93,6 +93,7 @@ app.post('/CreateChat', upload.single('file'), async (req, res) => {
     }
 
     await WashTable();
+    await CheckTable(access_token);
 
     if (req.file && req.file.mimetype == "application/pdf") {
         try {
@@ -242,20 +243,51 @@ app.post('/EditChat', async (req, res) => {
     try {
         const { access_token, ChatID, ChatName } = req.body;
         const usr = await Login(access_token);
+        console.log(ChatID);
+        console.log(ChatName);
 
         if (usr.status == 200) {
-            const { error } = await supabase
-                .from('ChatLogs').update(ChatName)
+            const { data, error } = await supabase
+                .from('ChatLogs').update({ ChatName: ChatName })
                 .eq('id', ChatID)
-                .eq('UUID', usr.id);
+                .eq('UUID', usr.id).select();
+
+            console.log(data);
 
             if (error) {
                 console.log('Error deleting chat log:', error.message);
                 res.status(400).send("Error : Some ChatLog Name Editing Related Error Occured");
             } else {
-                console.log('Chat log deleted successfully');
-                res.status(200).send("Chat Deleted Successfully");
+                console.log('Chat log Edited successfully' + data);
+                res.status(200).send("Chat Edited Successfully");
             }
+        }
+    }
+    catch (err) {
+        console.log(err);
+        res.status(404).send("Error : Some User Related Error Occured");
+    };
+});
+
+app.post('/UpdateChat', async (req, res) => {
+    try {
+        const { UUID, ChatID, messages } = req.body;
+        console.log(ChatID);
+        console.log(messages);
+
+        const { data, error } = await supabase
+            .from('ChatLogs').update({ ChatHistory: messages })
+            .eq('id', ChatID)
+            .eq('UUID', UUID).select();
+
+        console.log(data);
+
+        if (error) {
+            console.log('Error Updating History:', error.message);
+            res.status(400).send("Error : Some Updating History Related Error Occured");
+        } else {
+            console.log('History Updated successfully' + data);
+            res.status(200).send("History Updated Successfully");
         }
     }
     catch (err) {
@@ -299,6 +331,7 @@ app.get('/training-status', (req, res) => {
     });
 });
 
+// app.listen(80, '178.17.1.201');
 app.listen(port, () => {
-    console.log(`Example app listening at ${port}`);
+    console.log(`Example app listening at http://localhost:${port}`)
 });

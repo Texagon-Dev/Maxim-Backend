@@ -138,6 +138,14 @@ export const CheckTable = async (jwt) => {
 }
 
 export const WashTable = async (jwt) => {
+    //await supabase.from("ChatLogs");
+    const { data, error } = await supabase
+        .from('ChatLogs')
+        .update({ Status: 'Complete' })
+        .eq('UUID',currentLoggedInUser.id)
+        .select()
+
+    console.log("Wash Table : " + currentLoggedInUser);
     try {
         const { error } = await supabase
             .from(DocumentName)

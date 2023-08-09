@@ -331,7 +331,288 @@ app.get('/training-status', (req, res) => {
     });
 });
 
-// app.listen(80, '178.17.1.201');
+
+import Stripe from 'stripe';
+const stripe = new Stripe('sk_test_51NaO1CIl5R3y4OKwaBGFtZiTu6Grm2iaaRmMmEyHFgRO3KetxMgORT3ONyFoZw1qIbbLBrzbG6bNw5sfHG8ss34L009CU6AYdU');
+
+
+app.post('/getStripe1', async (req, res) => {
+    try {
+        const { access_token } = req.body;
+        const planid = 1;
+
+        const usr = await Login(access_token);
+        const { data, error } = await supabase.from("Plans").select("*").eq("Pid", planid);
+        console.log(data);
+        const { data: user, error: err } = await supabase.from("Customers").select("*").eq("UUID", usr.id);
+        console.log(user);
+
+        console.log("User Found : ");
+        console.log(usr.user.name);
+        // if (data) {
+        //     if (data[0].PlanStripeID) {
+        //         res.status(200).send(data[0]);
+        //     }
+        //     else {
+
+        //         try {
+        //             const product = await stripe.products.create({
+        //                 name: data[0].PlanName,
+        //                 default_price_data: {
+        //                     unit_amount: 500,
+        //                     currency: 'eur',
+        //                     recurring: {
+        //                         interval: 'month',
+        //                     },
+        //                 },
+        //             });
+
+        //             await supabase.from("Plans").update({ PlanStripeID: product.id }).eq("Pid", planid);
+
+        //             console.log('Product created : ', product);
+        //             return res.status(200).send(product);
+        //         } catch (error) {
+        //             console.error('Error creating product:', error);
+        //         }
+
+        //         res.status(404).send("Error : No Stripe Plan Found");
+        //     }
+        // }
+
+        // if (user.length == 0) {
+        //     try {
+        //         const customer = await stripe.customers.create({
+        //             email: usr.email,
+        //             name: usr.user.name,
+        //         });
+
+        //         console.log('Customer created : ', customer);
+        //         await supabase.from("Customers").insert([{ UUID: usr.id, StripeCustID: customer.id }]);
+
+        //         return res.status(200).send(customer);
+        //     } catch (error) {
+        //         console.error('Error creating customer:', error);
+        //     }
+        // }
+        // else {
+        //     if (user[0].StripeCustID) {
+        //         return res.status(200).send(user[0]);
+        //     }
+        //     else {
+        //         try {
+        //             const customer = await stripe.customers.create({
+        //                 email: usr.email,
+        //             });
+
+        //             await supabase.from("Customers").update({ StripeCustID: customer.id }).eq("UUID", usr.id);
+
+        //             console.log('Customer created : ', customer);
+        //             return res.status(200).send(customer);
+        //         } catch (error) {
+        //             console.error('Error creating customer:', error);
+        //         }
+        //     }
+        // }
+
+
+        return res.status(200).send(user[0]);
+    }
+    catch (err) {
+        console.log(err);
+        res.status(404).send("Error : Some User Related Error Occured");
+    };
+});
+
+app.post('/stripe_webhooks', async (req, res) => {
+    console.log("Webhook Called");
+    const event = req.body;
+    console.log(event);
+    res.status(200).send("Webhook Called");
+    
+});
+
+app.post('/getStripe', async (req, res) => {
+    try {
+        const { access_token, planid } = req.body;
+
+        const usr = await Login(access_token);
+
+        if (!usr || !usr.id) {
+            return res.status(404).send("Error: User authentication failed or user not found.");
+        }
+
+        const [planResponse, userResponse] = await Promise.all([
+            supabase.from("Plans").select("*").eq("Pid", planid),
+            supabase.from("Customers").select("*").eq("UUID", usr.id)
+        ]);
+
+        const planData = planResponse.data;
+        let userData = userResponse.data;
+        let product;
+        let customer;
+
+        console.log(usr);
+
+        if (!planData || !planData.length) {
+            return res.status(404).send("Error: Plan not found");
+        }
+        else {
+            console.log(planData);
+            if (!(planData[0].PlanStripeID) || (planData[0].PlanStripeID == null)) {
+
+                console.log("Creating Product");
+
+                product = await stripe.products.create({
+                    name: planData[0].PlanName,
+                    default_price_data: {
+                        unit_amount: planData[0].Price * 100,
+                        currency: 'eur',
+                        recurring: {
+                            interval: 'month',
+                        },
+                    },
+                    description: planData[0].PlanDescription,
+                });
+
+                product = await supabase.from("Plans").update({ PlanStripeID: product.id, Price_ID: product.default_price }).eq("Pid", planid).select();
+                product = product.data[0];
+            }
+            else {
+                product = planData[0];
+            }
+            console.log(product);
+        }
+
+        if (!userData || !userData.length) {
+            const stripecustomer = await stripe.customers.create({
+                email: usr.email,
+                name: usr.user.name,
+            });
+
+            console.log('Customer created : ', stripecustomer);
+            customer = (await supabase.from("Customers").insert([{ UUID: usr.id, StripeCustID: stripecustomer.id }]).select()).data;
+        }
+        else {
+            if (!(userData[0].StripeCustID)) {
+                const stripecustomer = await stripe.customers.create({
+                    email: usr.email,
+                    name: usr.user.name,
+                });
+                customer = (await supabase.from("Customers").update([{ UUID: usr.id, StripeCustID: stripecustomer.id }]).eq("UUID", usr.id).select()).data;
+            }
+            else {
+                customer = userData[0];
+            }
+        }
+
+        let session;
+
+        try {
+            session = await stripe.checkout.sessions.create({
+                success_url: 'https://www.google.com',
+                cancel_url: 'https://www.facebook.com',
+                customer: customer.StripeCustID,
+                line_items: [{
+                    price: product.Price_ID,
+                    quantity: 1,
+                }],
+                mode: 'subscription',
+            });
+        }
+        catch (err) {
+            res.status(500).json({ "error_message": "Error in creating checkout session", "error": err })
+            return
+        }
+
+        console.log(session);
+
+        return res.status(200).send(session.url);
+        return res.status(200).send(userData[0]);
+
+    } catch (err) {
+        console.error("Error:", err);
+        return res.status(500).send("Error: An unexpected error occurred");
+    }
+});
+
 app.listen(port, () => {
     console.log(`Example app listening at http://localhost:${port}`)
 });
+
+
+/*
+
+    {
+  "session": {
+    "id": "cs_test_a12yfb9AVYkpC1x1NyoM73vkOgBkEXLrxIUpagxLY7ibwFueMPNRC0DtdY",
+    "object": "checkout.session",
+    "after_expiration": null,
+    "allow_promotion_codes": null,
+    "amount_subtotal": 500,
+    "amount_total": 500,
+    "automatic_tax": {
+      "enabled": false,
+      "status": null
+    },
+    "billing_address_collection": null,
+    "cancel_url": "https://www.facebook.com",
+    "client_reference_id": null,
+    "consent": null,
+    "consent_collection": null,
+    "created": 1691582895,
+    "currency": "eur",
+    "currency_conversion": null,
+    "custom_fields": [],
+    "custom_text": {
+      "shipping_address": null,
+      "submit": null
+    },
+    "customer": "cus_OQ0hnPGERaYw4A",
+    "customer_creation": null,
+    "customer_details": {
+      "address": null,
+      "email": "skjdasjdljassoldjolasjso@khdsj.com",
+      "name": null,
+      "phone": null,
+      "tax_exempt": "none",
+      "tax_ids": null
+    },
+    "customer_email": null,
+    "expires_at": 1691669295,
+    "invoice": null,
+    "invoice_creation": null,
+    "livemode": false,
+    "locale": null,
+    "metadata": {},
+    "mode": "subscription",
+    "payment_intent": null,
+    "payment_link": null,
+    "payment_method_collection": "always",
+    "payment_method_options": null,
+    "payment_method_types": [
+      "card"
+    ],
+    "payment_status": "unpaid",
+    "phone_number_collection": {
+      "enabled": false
+    },
+    "recovered_from": null,
+    "setup_intent": null,
+    "shipping_address_collection": null,
+    "shipping_cost": null,
+    "shipping_details": null,
+    "shipping_options": [],
+    "status": "open",
+    "submit_type": null,
+    "subscription": null,
+    "success_url": "https://www.google.com",
+    "total_details": {
+      "amount_discount": 0,
+      "amount_shipping": 0,
+      "amount_tax": 0
+    },
+    "url": "https://checkout.stripe.com/c/pay/cs_test_a12yfb9AVYkpC1x1NyoM73vkOgBkEXLrxIUpagxLY7ibwFueMPNRC0DtdY#fid2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2R1bE5gfCc%2FJ3VuWnFgdnFaMDRLZEo0RkxpMFc2fDFKTnJNNXNrYE9QX0RtQzFmR1BCTUpufEJWXH9%2FS2BKNFNsZEpgSXdTN1R8bTBhazRRYGI3PW9BRmBcf2Zya05GQmxzZ0xOPXNLMkQ1NTJzdEBPS2owJyknY3dqaFZgd3Ngdyc%2FcXdwYCknaWR8anBxUXx1YCc%2FJ3Zsa2JpYFpscWBoJyknYGtkZ2lgVWlkZmBtamlhYHd2Jz9xd3BgeCUl"
+  }
+}
+
+*/

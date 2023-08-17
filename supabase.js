@@ -32,6 +32,21 @@ let currentLoggedInUser = null;
 let DocumentName = null;
 let RPCFuncName = null;
 
+export const getplandetails = async (chatid) => {
+    const { data, error } = await supabase.from('ChatLogs').select('*').eq('id', chatid);
+
+    if (data) {
+        return data;
+    }
+    return null;
+}
+
+export const updateallowedquestion = async (ChatID, UUID) => {
+    await supabase.rpc("update_allowed_questions", {
+        chatid: ChatID,
+        uuid_param: UUID,
+    });
+}
 
 //Login and Necessary Table and Function Creation
 export const Login = async (jwt) => {
@@ -48,7 +63,7 @@ export const Login = async (jwt) => {
         console.log("Login Successfull" + "\n" + data.user.id);
 
         currentLoggedInUser = data.user;
-        DocumentName = currentLoggedInUser.id + "_documents";
+        DocumentName = currentLoggedInUser.id;
         RPCFuncName = currentLoggedInUser.id + "_vf";
 
         return {
@@ -66,19 +81,9 @@ export const Login = async (jwt) => {
     }
 }
 
-const CreateRPCDocument = async (table_name) => {
-    const { data, error } = await supabase.rpc('create_document', {
-        table_name: currentLoggedInUser.id + "_documents",
-    });
-    if (error) {
-        console.error(error);
-    }
-    console.log("The RPCDocs 57 : " + data);
-}
-
 const CreateRPCfunction = async (table_name) => {
     const { data, error } = await supabase.rpc('create_matchdoc_rpc', {
-        table_name: currentLoggedInUser.id + "_documents",
+        table_name: currentLoggedInUser.id ,
         vf_name: currentLoggedInUser.id + "_vf",
     });
     if (error) {
@@ -94,45 +99,7 @@ export const CheckTable = async (jwt) => {
         return false;
     }
 
-    console.log("Login Successfull : " + usr.user);
-
-    await supabase.rpc('tablecheck', { DocumentName }).then(async (response, error) => {
-        if (error) {
-            console.error(error);
-            await CreateRPCDocument();
-            console.log("Table Created");
-        }
-
-        console.log(response);
-
-        if (response.length > 0) {
-            console.log(`Table ${DocumentName} exists`);
-        }
-        else {
-            console.log(`Table ${DocumentName} does not exist`);
-            await CreateRPCDocument();
-            console.log("Table Created2");
-        }
-    });
-
-    await supabase.rpc('funccheck', { RPCFuncName }).then(async (response, error) => {
-        if (error) {
-            console.error(error);
-            await CreateRPCfunction();
-            console.log("RPC Created");
-        }
-
-        console.log(response);
-
-        if (response.length > 0) {
-            console.log(`RPC Func ${RPCFuncName} exists`);
-        }
-        else {
-            console.log(`Table ${RPCFuncName} does not exist`);
-            await CreateRPCfunction();
-            console.log("RPC Created");
-        }
-    });
+    await CreateRPCfunction();
 
     return usr;
 }
@@ -142,10 +109,11 @@ export const WashTable = async (jwt) => {
     const { data, error } = await supabase
         .from('ChatLogs')
         .update({ Status: 'Complete' })
-        .eq('UUID',currentLoggedInUser.id)
+        .eq('UUID', currentLoggedInUser.id)
         .select()
 
     console.log("Wash Table : " + currentLoggedInUser);
+
     try {
         const { error } = await supabase
             .from(DocumentName)

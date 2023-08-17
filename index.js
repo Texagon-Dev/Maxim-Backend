@@ -1,7 +1,7 @@
 import express from "express";
 import path from "path";
 import cors from "cors";
-import { Query, runforpdf, runforcsv, runfortxt, runfordocx, CheckTable, Login, supabase, WashTable } from "./supabase.js";
+import { Query, runforpdf, runforcsv, runfortxt, runfordocx, CheckTable, Login, supabase, WashTable, updateallowedquestion, getplandetails } from "./supabase.js";
 import fs from "fs";
 import { unlink } from "fs/promises";
 import chokidar from 'chokidar';
@@ -62,28 +62,10 @@ app.get('/', (req, res) => {
 });
 
 
-//Only Checks on Sign In ONLY
-app.post("/Validations", async (req, res) => {
-    try {
-        const { access_token } = req.body;
-        const user = await CheckTable(access_token);
-        if (!user) {
-            res.status(404).send("Error : User Not Found");
-        }
-        res.status(200).send("Done");
-    }
-    catch (err) {
-        console.log(err);
-        res.status(404).send("Error : User Not Found");
-    }
-});
-
 //Starts the Chat
 app.post('/CreateChat', upload.single('file'), async (req, res) => {
 
     const { access_token } = req.body;
-
-    console.log(req.file);
 
     let FileUploadSuccess = false;
     const usr = await CheckTable(access_token);
@@ -92,8 +74,13 @@ app.post('/CreateChat', upload.single('file'), async (req, res) => {
         return res.status(404).send("Error : User Not Found");
     }
 
+    const userdata = await supabase.from('Customers').select('*').eq('UUID', usr.id);
+    console.log(userdata);
+    
     await WashTable();
-    await CheckTable(access_token);
+    await supabase.rpc('book_down', {
+        uuid_param: usr.id,
+    });
 
     if (req.file && req.file.mimetype == "application/pdf") {
         try {
@@ -298,22 +285,23 @@ app.post('/UpdateChat', async (req, res) => {
 
 app.post("/chat", async (req, res) => {
     try {
-        const { access_token, query } = req.body;
-        const usr = await Login(access_token);
+        const { access_token, query, ChatID } = req.body;
 
+        const [usr, plan] = await Promise.all([Login(access_token), getplandetails(ChatID)]);
         if (usr.status == 200) {
-            const result = Query(query, null);
+            const queryPromise = Query(query, null);
+            const updatePromise = updateallowedquestion(ChatID, usr.id);
+
+            const [result, _] = await Promise.all([queryPromise, updatePromise]);
             console.log(result);
-            result.then((output) => {
-                res.status(200).json({ output: output });
-            }
-            );
+
+            res.status(200).json({ output: result });
         } else {
-            res.status(404).send("Error : User Not Found");
+            res.status(404).send("Error: User Not Found");
         }
-    }
-    catch (err) {
+    } catch (err) {
         console.log(err);
+        res.status(500).send("Internal Server Error");
     }
 });
 
@@ -331,8 +319,8 @@ app.get('/training-status', (req, res) => {
     });
 });
 
-
 import Stripe from 'stripe';
+import { promises } from "dns";
 const stripe = new Stripe('sk_test_51NaO1CIl5R3y4OKwaBGFtZiTu6Grm2iaaRmMmEyHFgRO3KetxMgORT3ONyFoZw1qIbbLBrzbG6bNw5sfHG8ss34L009CU6AYdU');
 
 
@@ -428,7 +416,7 @@ app.post('/stripe_webhooks', async (req, res) => {
     const event = req.body;
     console.log(event);
     res.status(200).send("Webhook Called");
-    
+
 });
 
 app.post('/getStripe', async (req, res) => {

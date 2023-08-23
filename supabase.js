@@ -3,7 +3,7 @@ import { SupabaseVectorStore } from "langchain/vectorstores/supabase";
 import { OpenAIEmbeddings } from "langchain/embeddings/openai";
 import { createClient } from "@supabase/supabase-js";
 import { makeChain } from "./makechain.js";
-
+import fs from "fs";
 import { PDFLoader } from "langchain/document_loaders/fs/pdf";
 import { CSVLoader } from "langchain/document_loaders/fs/csv";
 import { TextLoader } from "langchain/document_loaders/fs/text";
@@ -11,8 +11,6 @@ import { JSONLoader } from "langchain/document_loaders/fs/json";
 import { DocxLoader } from "langchain/document_loaders/fs/docx";
 import { EPubLoader } from "langchain/document_loaders/fs/epub";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
-
-import { response } from "express";
 
 dotenv.config();
 
@@ -48,7 +46,6 @@ export const updateallowedquestion = async (ChatID, UUID) => {
     });
 }
 
-//Login and Necessary Table and Function Creation
 export const Login = async (jwt) => {
     const { data, error } = await supabase.auth.getUser(jwt);
     if (error) {
@@ -59,8 +56,6 @@ export const Login = async (jwt) => {
             status: 404
         };
     } else if (data?.user) {
-
-        console.log("Login Successfull" + "\n" + data.user.id);
 
         currentLoggedInUser = data.user;
         DocumentName = currentLoggedInUser.id;
@@ -83,7 +78,7 @@ export const Login = async (jwt) => {
 
 const CreateRPCfunction = async (table_name) => {
     const { data, error } = await supabase.rpc('create_matchdoc_rpc', {
-        table_name: currentLoggedInUser.id ,
+        table_name: currentLoggedInUser.id,
         vf_name: currentLoggedInUser.id + "_vf",
     });
     if (error) {
@@ -98,46 +93,30 @@ export const CheckTable = async (jwt) => {
         console.log("Login Failed");
         return false;
     }
-
     await CreateRPCfunction();
-
     return usr;
 }
 
-export const WashTable = async (jwt) => {
-    //await supabase.from("ChatLogs");
-    const { data, error } = await supabase
-        .from('ChatLogs')
-        .update({ Status: 'Complete' })
-        .eq('UUID', currentLoggedInUser.id)
-        .select()
-
-    console.log("Wash Table : " + currentLoggedInUser);
-
+export const uploadFiletoSupabase = async (file) => {
+    console.log("================================================");
     try {
-        const { error } = await supabase
-            .from(DocumentName)
-            .delete()
-            .gt('id', 0);
+        const datafile = await fs.promises.readFile(`./uploads/${file.filename}`);
+        const { data, error } = await supabase.storage.from('Documents').upload(file.filename, datafile);
 
         if (error) {
-            console.log('Error deleting Trained Data :', error.message);
+            console.log('Error in Uploading File:', error.message);
+            return false;
         } else {
-            console.log('All chat logs deleted successfully');
+            console.log('File Uploaded Successfully');
             return true;
         }
+    } catch (err) {
+        console.error('Error:', err.message);
+        return false;
     }
-    catch (err) {
-        console.log(err);
-    }
-    return false;
+    return true;
 }
 
-//End of Initial Login and Table and Function Creation
-
-
-
-//Upload File Runner
 export const runforpdf = async (filename) => {
     let loader = null;
     let docs = null;
@@ -156,8 +135,6 @@ export const runforpdf = async (filename) => {
             });
             const docOutput = await splitter.splitDocuments(docs);
 
-            console.log("Docs Output Correct");
-
             const vectorStore = await SupabaseVectorStore.fromDocuments(
                 docOutput,
                 new OpenAIEmbeddings(),
@@ -167,6 +144,7 @@ export const runforpdf = async (filename) => {
                     queryName: RPCFuncName,
                 }
             );
+
 
             console.log("After Docs Output Correct");
             return 1;
@@ -242,44 +220,6 @@ export const runfortxt = async (filename) => {
     return null;
 };
 
-export const runforjson = async (filename) => {
-
-    //Error in Loading JSON File in JSONLOADER
-    let loader = null;
-    let docs = null;
-
-    if (filename !== null) {
-        try {
-
-            console.log("JSON File Processing Starting");
-            loader = new JSONLoader(`./uploads/${filename}`);
-            docs = await loader.load();
-
-            console.log("JSON File Processing Starting after Docs");
-            const splitter = new RecursiveCharacterTextSplitter({
-                chunkSize: 1500,
-                chunkOverlap: 200,
-            });
-            const docOutput = await splitter.splitDocuments(docs);
-            const vectorStore = await SupabaseVectorStore.fromDocuments(
-                docOutput,
-                new OpenAIEmbeddings(),
-                {
-                    client: supabase,
-                    tableName: DocumentName,
-                    queryName: RPCFuncName,
-                }
-            );
-            console.log("JSON File Processed");
-            return 1;
-        } catch (err) {
-            console.log(err);
-        }
-    }
-    console.log("Error in runforjson");
-    return null;
-};
-
 export const runfordocx = async (filename) => {
     let loader = null;
     let docs = null;
@@ -312,60 +252,24 @@ export const runfordocx = async (filename) => {
     return null;
 };
 
-export const runforepub = async (filename) => {
-    let loader = null;
-    let docs = null;
+export const DelDocfromSupabase = async (filename) => {
 
-    if (filename !== null) {
-        try {
-            loader = new EPubLoader(`./uploads/${filename}`);
-            docs = await loader.load();
+    console.log("Deleting : " + './uploads/' + filename);
+    const escapedFilename = filename.replace(/'/g, "\\'");
+    const { data, error } = await supabase
+        .from(DocumentName)
+        .delete()
+        .eq('metadata->>source', `./uploads/${escapedFilename}`);
 
-            const splitter = new RecursiveCharacterTextSplitter({
-                chunkSize: 1500,
-                chunkOverlap: 200,
-            });
-            const docOutput = await splitter.splitDocuments(docs);
-            const vectorStore = await SupabaseVectorStore.fromDocuments(
-                docOutput,
-                new OpenAIEmbeddings(),
-                {
-                    client: supabase,
-                    tableName: DocumentName,
-                    queryName: RPCFuncName,
-                }
-            );
-            return 1;
-        } catch (err) {
-            console.log(err);
-        }
-    }
-
-    return null;
-};
-
-//End of Upload File Runner
-
-
-
-
-
-
-
-
-
-
-
-
+    console.log(data, error);
+    console.log("Deleted : " + './uploads/' + filename);
+}
 
 //Query Runner
-export const Query = async (query) => {
+export const Query = async (query, Document) => {
+
     let loader = null;
     let docs = null;
-
-    console.log("Query from Supabase : ", query);
-    console.log("Document : " + DocumentName);
-    console.log("RPC : " + RPCFuncName);
 
     const vectorStore = await SupabaseVectorStore.fromExistingIndex(
         new OpenAIEmbeddings(),
@@ -376,11 +280,40 @@ export const Query = async (query) => {
         }
     );
 
-    const chain = makeChain(vectorStore)
-    const result = await chain.call({
-        question: query,
-        context: docs,
-        chat_history: [],
+    const relevantDocs = await vectorStore.similaritySearch(query, 1, {
+        source: "./uploads/" + Document,
     });
-    return result;
+
+    console.log("Relevant Docs : ", relevantDocs);
+
+    if (relevantDocs.length === 0) {
+        return {
+            result: "No Relevant Information Found in the Uploaded Document.",
+            sources: []
+        };
+    }
+
+    const chain = makeChain();
+
+    let sources = [];
+
+    for (const document of relevantDocs) {
+        sources.push(document.metadata);
+    }
+
+    const result = await chain.call({
+        input_documents: relevantDocs,
+        question: query,
+    });
+    console.log({
+        result: result,
+        sources: sources
+    });
+
+    //await DelDocfromSupabase(Document);
+
+    return {
+        result: result.output_text,
+        sources: sources
+    };
 }

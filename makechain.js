@@ -1,38 +1,52 @@
 import { OpenAI } from 'langchain/llms/openai';
-import { ConversationalRetrievalQAChain } from 'langchain/chains';
+import { loadQARefineChain } from "langchain/chains";
+import { OpenAIEmbeddings } from "langchain/embeddings/openai";
+import { PromptTemplate } from "langchain/prompts";
 
-const CONDENSE_PROMPT = `Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question.
+export const makeChain = () => {
 
-    Chat History:
-    {chat_history}
-    Follow Up Input: {question}
-    Standalone question:`;
 
-const QA_PROMPT = `You are a helpful AI assistant. Use the following pieces of context to answer the question at the end.
-    If you don't know the answer, just say you don't know. DO NOT try to make up an answer.
-    If the question is not related to the context, politely respond that you are tuned to only answer questions that are related to the context.
-    If there are steps to the answer, please include them in your answer. Also place \n
-    between steps to make your answer more readable. Format your answer to be in markdown.
-
+    const questionPromptTemplateString = `Context information is below.
+    ---------------------
     {context}
+    ---------------------
+    Given the context information and no prior knowledge, answer the question: {question}`;
 
-    Question: {question}
-    Helpful answer in markdown:`;
-
-export const makeChain = (vectorstore) => {
-    const model = new OpenAI({
-        temperature: 0.4, 
-        modelName: 'gpt-3.5-turbo', 
+    const questionPrompt = new PromptTemplate({
+        inputVariables: ["context", "question"],
+        template: questionPromptTemplateString,
     });
 
-    const chain = ConversationalRetrievalQAChain.fromLLM(
-        model,
-        vectorstore.asRetriever(),
-        {
-            qaTemplate: QA_PROMPT,
-            questionGeneratorTemplate: CONDENSE_PROMPT,
-            returnSourceDocuments: true, //The number of source documents returned is 4 by default
-        },
-    );
+    const refinePromptTemplateString = `You are a helpful AI assistant. If you don't know the answer, just say This Doesnt exists in the PDF. DO NOT try to make up an answer.If the question is not related to the context, politely respond that you are tuned to only answer questions that are related to the Current PDF.
+    
+    If there are steps to the answer, please include them in your answer. Also place \n
+    between steps to make your answer more readable. Format your answer to be in markdown.   
+    
+    The original question is as follows: {question}
+    We have provided an existing answer: {existing_answer}
+    We have the opportunity to refine the existing answer
+    (only if needed) with some more context below.
+    ------------
+    {context}
+    ------------
+    Given the new context, refine the original answer to better answer the question.
+    You must provide a response, either original answer or refined answer.`;
+
+    const refinePrompt = new PromptTemplate({
+        inputVariables: ["question", "existing_answer", "context"],
+        template: refinePromptTemplateString,
+    });
+
+    // Create the models and chain
+    const embeddings = new OpenAIEmbeddings();
+    const model = new OpenAI({
+        temperature: 0.4,
+        modelName: 'gpt-3.5-turbo',
+    });
+    const chain = loadQARefineChain(model, {
+        questionPrompt,
+        refinePrompt
+    });
+
     return chain;
 };

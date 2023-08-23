@@ -1,7 +1,7 @@
 import express from "express";
 import path from "path";
 import cors from "cors";
-import { Query, runforpdf, runforcsv, runfortxt, runfordocx, CheckTable, Login, supabase, WashTable, updateallowedquestion, getplandetails } from "./supabase.js";
+import { Query, runforpdf, runforcsv, runfortxt, runfordocx, CheckTable, Login, supabase, updateallowedquestion, getplandetails, uploadFiletoSupabase, DelDocfromSupabase } from "./supabase.js";
 import fs from "fs";
 import { unlink } from "fs/promises";
 import chokidar from 'chokidar';
@@ -69,23 +69,18 @@ app.post('/CreateChat', upload.single('file'), async (req, res) => {
 
     let FileUploadSuccess = false;
     const usr = await CheckTable(access_token);
-
     if (usr == false) {
         return res.status(404).send("Error : User Not Found");
     }
-
     const userdata = await supabase.from('Customers').select('*').eq('UUID', usr.id);
-    console.log(userdata);
-    
-    await WashTable();
-    await supabase.rpc('book_down', {
-        uuid_param: usr.id,
-    });
+
+    console.log("The Requested File is : ", req.file);
 
     if (req.file && req.file.mimetype == "application/pdf") {
         try {
             uploadFile = await runforpdf(req.file.filename);
             if (uploadFile !== null) {
+                await uploadFiletoSupabase(req.file);
                 await unlink(`uploads/${req.file.filename}`);
                 console.log(`Processing of file ${req.file.filename} complete`);
 
@@ -100,6 +95,7 @@ app.post('/CreateChat', upload.single('file'), async (req, res) => {
         try {
             uploadFile = await runforcsv(req.file.filename);
             if (uploadFile !== null) {
+                await uploadFiletoSupabase(req.file);
                 await unlink(`uploads/${req.file.filename}`);
                 console.log(`Processing of file ${req.file.filename} complete`);
                 FileUploadSuccess = true;
@@ -113,10 +109,10 @@ app.post('/CreateChat', upload.single('file'), async (req, res) => {
         try {
             uploadFile = await runfortxt(req.file.filename);
             if (uploadFile !== null) {
+                await uploadFiletoSupabase(req.file);
                 await unlink(`uploads/${req.file.filename}`);
                 console.log(`Processing of file ${req.file.filename} complete`);
                 FileUploadSuccess = true;
-
             }
         } catch (err) {
             console.log(err);
@@ -125,6 +121,8 @@ app.post('/CreateChat', upload.single('file'), async (req, res) => {
     } else if (req.file && req.file.originalname.endsWith(".docx")) {
         try {
             uploadFile = await runfordocx(req.file.filename);
+            await uploadFiletoSupabase(req.file);
+
             if (uploadFile !== null) {
                 await unlink(`uploads/${req.file.filename}`);
                 console.log(`Processing of file ${req.file.filename} complete`);
@@ -175,7 +173,7 @@ app.post('/GetAllChats', async (req, res) => {
 
         if (usr.status == 200) {
             //console.log("User Found : " + JSON.stringify(usr.user));
-            console.log("User Found : " + usr.id);
+            //console.log("User Found : " + usr.id);
 
             const { data, error } = await supabase
                 .from('ChatLogs')
@@ -186,7 +184,7 @@ app.post('/GetAllChats', async (req, res) => {
                 console.log('Error getting chat logs:', error.message);
                 return;
             }
-            console.log(data);
+            //console.log(data);
             res.status(200).send(data);
         } else {
             res.status(404).send("Error : User Not Found");
@@ -195,35 +193,7 @@ app.post('/GetAllChats', async (req, res) => {
     catch (err) {
         console.log(err);
         res.status(404).send("Error : Some User Related Error Occured");
-
     }
-});
-
-app.post('/DelChat', async (req, res) => {
-    try {
-        const { access_token, ChatID } = req.body;
-        const usr = await Login(access_token);
-
-        if (usr.status == 200) {
-            const { error } = await supabase
-                .from('ChatLogs')
-                .delete()
-                .eq('id', ChatID)
-                .eq('UUID', usr.id);
-
-            if (error) {
-                console.log('Error deleting chat log:', error.message);
-                res.status(400).send("Error : Some ChatLog Deleting Related Error Occured");
-            } else {
-                console.log('Chat log deleted successfully');
-                res.status(200).send("Chat Deleted Successfully");
-            }
-        }
-    }
-    catch (err) {
-        console.log(err);
-        res.status(404).send("Error : Some User Related Error Occured");
-    };
 });
 
 app.post('/EditChat', async (req, res) => {
@@ -259,21 +229,21 @@ app.post('/EditChat', async (req, res) => {
 app.post('/UpdateChat', async (req, res) => {
     try {
         const { UUID, ChatID, messages } = req.body;
-        console.log(ChatID);
-        console.log(messages);
+        //console.log(ChatID);
+        //console.log(messages);
 
         const { data, error } = await supabase
             .from('ChatLogs').update({ ChatHistory: messages })
             .eq('id', ChatID)
             .eq('UUID', UUID).select();
 
-        console.log(data);
+        //console.log(data);
 
         if (error) {
             console.log('Error Updating History:', error.message);
             res.status(400).send("Error : Some Updating History Related Error Occured");
         } else {
-            console.log('History Updated successfully' + data);
+            //console.log('History Updated successfully' + data);
             res.status(200).send("History Updated Successfully");
         }
     }
@@ -286,16 +256,16 @@ app.post('/UpdateChat', async (req, res) => {
 app.post("/chat", async (req, res) => {
     try {
         const { access_token, query, ChatID } = req.body;
-
         const [usr, plan] = await Promise.all([Login(access_token), getplandetails(ChatID)]);
+
+        console.log("The Chat ID is " + ChatID);
+        console.log(plan);
+
         if (usr.status == 200) {
-            const queryPromise = Query(query, null);
-            const updatePromise = updateallowedquestion(ChatID, usr.id);
 
-            const [result, _] = await Promise.all([queryPromise, updatePromise]);
-            console.log(result);
+            const [result, _] = await Promise.all([Query(query, plan[0].BookName), updateallowedquestion(ChatID, usr.id)]);
 
-            res.status(200).json({ output: result });
+            res.status(200).json({ result });
         } else {
             res.status(404).send("Error: User Not Found");
         }
@@ -305,24 +275,74 @@ app.post("/chat", async (req, res) => {
     }
 });
 
-app.get('/training-status', (req, res) => {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
+app.post('/getChatDocument', async (req, res) => {
+    try {
+        const { access_token, ChatID } = req.body;
+        const usr = await Login(access_token);
+        const chat = await supabase.from('ChatLogs').select('*').eq('id', ChatID).eq('UUID', usr.id);
+        if (usr.status == 200) {
+            if (chat.data.length == 0) {
+                res.status(404).send("Error : Chat Not Found");
+            } else {
+                console.log(chat.data[0].BookName);
 
-    // Add this client to the clients list
-    clients.push({ req, res });
+                const { data, error } = await supabase
+                    .storage
+                    .from('Documents')
+                    .createSignedUrl(chat.data[0].BookName, 60 * 60);
 
-    // When the request is closed, remove it from the clients list
-    req.on('close', () => {
-        clients = clients.filter(client => client.req !== req);
-    });
+                if (error) {
+                    console.error('Error creating temporary link:', error.message);
+                    res.status(400).send("Error : Documment Error");
+                    return null;
+                }
+                res.status(200).send({ BookName: chat.data[0].BookName, url: data.signedUrl });
+            }
+        }
+    }
+    catch (err) {
+        console.log(err);
+        res.status(404).send("Error : Some User Related Error Occured");
+    };
 });
 
-import Stripe from 'stripe';
-import { promises } from "dns";
-const stripe = new Stripe('sk_test_51NaO1CIl5R3y4OKwaBGFtZiTu6Grm2iaaRmMmEyHFgRO3KetxMgORT3ONyFoZw1qIbbLBrzbG6bNw5sfHG8ss34L009CU6AYdU');
+app.post('/DelChat', async (req, res) => {
+    try {
+        const { access_token, ChatID } = req.body;
+        const usr = await Login(access_token);
 
+        if (usr.status == 200) {
+
+            const chat = await supabase.from('ChatLogs').select('*').eq('id', ChatID).eq('UUID', usr.id).single();
+            console.log(chat.data.BookName);
+
+            await DelDocfromSupabase(chat.data.BookName);
+
+            const { error } = await supabase
+                .from('ChatLogs')
+                .delete()
+                .eq('id', ChatID)
+                .eq('UUID', usr.id);
+
+            if (error) {
+                console.log('Error deleting chat log:', error.message);
+                res.status(400).send("Error : Some ChatLog Deleting Related Error Occured");
+            } else {
+
+                const { data, error } = await supabase.storage.from('Documents').remove([chat.data.BookName]);
+
+                res.status(200).send("Chat Deleted Successfully");
+            }
+        }
+    }
+    catch (err) {
+        console.log(err);
+        res.status(404).send("Error : Some User Related Error Occured");
+    };
+});
+import Stripe from 'stripe';
+
+const stripe = new Stripe('sk_test_51NaO1CIl5R3y4OKwaBGFtZiTu6Grm2iaaRmMmEyHFgRO3KetxMgORT3ONyFoZw1qIbbLBrzbG6bNw5sfHG8ss34L009CU6AYdU');
 
 app.post('/getStripe1', async (req, res) => {
     try {

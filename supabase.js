@@ -3,13 +3,12 @@ import { SupabaseVectorStore } from "langchain/vectorstores/supabase";
 import { OpenAIEmbeddings } from "langchain/embeddings/openai";
 import { createClient } from "@supabase/supabase-js";
 import { makeChain } from "./makechain.js";
+import { makeChain as mk } from "./mkchn.js";
 import fs from "fs";
 import { PDFLoader } from "langchain/document_loaders/fs/pdf";
 import { CSVLoader } from "langchain/document_loaders/fs/csv";
 import { TextLoader } from "langchain/document_loaders/fs/text";
-import { JSONLoader } from "langchain/document_loaders/fs/json";
 import { DocxLoader } from "langchain/document_loaders/fs/docx";
-import { EPubLoader } from "langchain/document_loaders/fs/epub";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 
 dotenv.config();
@@ -76,24 +75,18 @@ export const Login = async (jwt) => {
     }
 }
 
-const CreateRPCfunction = async (table_name) => {
-    const { data, error } = await supabase.rpc('create_matchdoc_rpc', {
-        table_name: currentLoggedInUser.id,
-        vf_name: currentLoggedInUser.id + "_vf",
-    });
-    if (error) {
-        console.error(error);
-    }
-    console.log("The RPC Func 67 : " + data);
-}
-
 export const CheckTable = async (jwt) => {
     const usr = await Login(jwt);
     if ((usr).status !== 200) {
         console.log("Login Failed");
         return false;
     }
-    await CreateRPCfunction();
+
+    const { data, error } = await supabase.rpc('create_matchdoc_rpc', {
+        table_name: currentLoggedInUser.id,
+        vf_name: currentLoggedInUser.id + "_vf",
+    });
+
     return usr;
 }
 
@@ -280,7 +273,7 @@ export const Query = async (query, Document) => {
         }
     );
 
-    const relevantDocs = await vectorStore.similaritySearch(query, 1, {
+    const relevantDocs = await vectorStore.similaritySearch(query,undefined, {
         source: "./uploads/" + Document,
     });
 
@@ -303,17 +296,56 @@ export const Query = async (query, Document) => {
 
     const result = await chain.call({
         input_documents: relevantDocs,
+        context: relevantDocs,
         question: query,
     });
     console.log({
-        result: result,
+        result: result.text,
         sources: sources
     });
 
-    //await DelDocfromSupabase(Document);
 
     return {
-        result: result.output_text,
+        result: result.text,
         sources: sources
     };
 }
+
+// export const Query = async (query, Document) => {
+
+//     let loader = null;
+//     let docs = null;
+
+//     console.log("Query from Supabase : ", query);
+//     console.log("Document : " + DocumentName);
+//     console.log("RPC : " + RPCFuncName);
+
+//     const vectorStore = await SupabaseVectorStore.fromExistingIndex(
+//         new OpenAIEmbeddings(),
+//         {
+//             client: supabase,
+//             tableName: DocumentName,
+//             queryName: RPCFuncName,
+//         }
+//     );
+
+
+//     const relevantDocs = await vectorStore.similaritySearch(query, undefined, {
+//         source: "./uploads/" + Document,
+//     });
+
+//     const chain = mk(vectorStore, "./uploads/" + Document);
+//     const result = await chain.call({
+//         input_documents: relevantDocs,
+//         question: query,
+//         context: docs,
+//         chat_history: [],
+//     });
+//     return result;
+
+
+//     return {
+//         result: result.text,
+//         sources: sources
+//     };
+// }

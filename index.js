@@ -310,6 +310,7 @@ app.post('/DelChat', async (req, res) => {
     try {
         const { access_token, ChatID } = req.body;
         const usr = await Login(access_token);
+        //return res.status(200).send("Chat Deleted Successfully");
 
         if (usr.status == 200) {
 
@@ -326,12 +327,12 @@ app.post('/DelChat', async (req, res) => {
 
             if (error) {
                 console.log('Error deleting chat log:', error.message);
-                res.status(400).send("Error : Some ChatLog Deleting Related Error Occured");
+                return res.status(400).send("Error : Some ChatLog Deleting Related Error Occured");
             } else {
 
                 const { data, error } = await supabase.storage.from('Documents').remove([chat.data.BookName]);
 
-                res.status(200).send("Chat Deleted Successfully");
+                return res.status(200).send("Chat Deleted Successfully");
             }
         }
     }

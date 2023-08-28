@@ -273,6 +273,14 @@ export const Query = async (query, Document) => {
         }
     );
 
+
+    // new OpenAIEmbeddings(),
+    //     {
+    //         client: supabase,
+    //         tableName: DocumentName,
+    //         queryName: RPCFuncName,
+    //     }
+
     const relevantDocs = await vectorStore.similaritySearch(query,undefined, {
         source: "./uploads/" + Document,
     });

@@ -58,7 +58,7 @@ function sendUpdates(message) {
 }
 
 app.get('/', (req, res) => {
-    res.send('Welcome to Maximm!');
+    res.send('Welcome to Maximm! Version == 1.0.0');
 });
 
 
@@ -467,7 +467,7 @@ app.post('/getStripe', async (req, res) => {
             }
         }
 
-        
+
         let session;
 
         try {

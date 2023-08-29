@@ -467,6 +467,7 @@ app.post('/getStripe', async (req, res) => {
             }
         }
 
+        
         let session;
 
         try {

@@ -73,6 +73,12 @@ app.post('/CreateChat', upload.single('file'), async (req, res) => {
         return res.status(404).send("Error : User Not Found");
     }
     const userdata = await supabase.from('Customers').select('*').eq('UUID', usr.id);
+    if (userdata.data[0].bookuploads > 0) {
+        await supabase.from('Customers').update({ bookuploads: userdata.data[0].bookuploads - 1 }).eq('UUID', usr.id);
+    }
+    else {
+        return res.status(404).send("Error : No Uploads Left");
+    }
 
     console.log("The Requested File is : ", req.file);
 
@@ -341,9 +347,43 @@ app.post('/DelChat', async (req, res) => {
         res.status(404).send("Error : Some User Related Error Occured");
     };
 });
+
 import Stripe from 'stripe';
 
 const stripe = new Stripe('sk_test_51NaO1CIl5R3y4OKwaBGFtZiTu6Grm2iaaRmMmEyHFgRO3KetxMgORT3ONyFoZw1qIbbLBrzbG6bNw5sfHG8ss34L009CU6AYdU');
+
+app.post('/getpaymentlist', async (req, res) => {
+    try {
+        const { access_token, ret_url } = req.body;
+        const usr = await Login(access_token);
+
+        if (usr.status == 200) {
+            const { data, error } = await supabase
+                .from('Customers')
+                .select('*')
+                .eq('UUID', usr.id).single();
+
+            if (error) {
+                console.log('Error getting customer:', error.message);
+                return res.status(400).send("Error : Some Customer Related Error Occured");
+            } else {
+                console.log('Customer retrieved successfully' + data);
+                if (data.StripeCustID == null) return res.status(200).send({ status: 1, msg: "No Payment History", link: null });
+
+                const customer = await stripe.billingPortal.sessions.create({
+                    customer: data.StripeCustID,
+                    return_url: ret_url ? ret_url : "https://www.yadocs.com",
+                });
+
+                return res.status(200).send({ status: 2, msg: "success", link: customer });
+            }
+        }
+    }
+    catch (err) {
+        console.log(err);
+        res.status(404).send("Error : Some User Related Error Occured");
+    };
+});
 
 app.post('/stripe_webhooks', async (req, res) => {
     console.log("Webhook Called");

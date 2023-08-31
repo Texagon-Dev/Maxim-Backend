@@ -352,38 +352,6 @@ import Stripe from 'stripe';
 
 const stripe = new Stripe('sk_test_51NaO1CIl5R3y4OKwaBGFtZiTu6Grm2iaaRmMmEyHFgRO3KetxMgORT3ONyFoZw1qIbbLBrzbG6bNw5sfHG8ss34L009CU6AYdU');
 
-app.post('/getpaymentlist', async (req, res) => {
-    try {
-        const { access_token, ret_url } = req.body;
-        const usr = await Login(access_token);
-
-        if (usr.status == 200) {
-            const { data, error } = await supabase
-                .from('Customers')
-                .select('*')
-                .eq('UUID', usr.id).single();
-
-            if (error) {
-                console.log('Error getting customer:', error.message);
-                return res.status(400).send("Error : Some Customer Related Error Occured");
-            } else {
-                console.log('Customer retrieved successfully' + data);
-                if (data.StripeCustID == null) return res.status(200).send({ status: 1, msg: "No Payment History", link: null });
-
-                const customer = await stripe.billingPortal.sessions.create({
-                    customer: data.StripeCustID,
-                    return_url: ret_url ? ret_url : "https://www.yadocs.com",
-                });
-
-                return res.status(200).send({ status: 2, msg: "success", link: customer });
-            }
-        }
-    }
-    catch (err) {
-        console.log(err);
-        res.status(404).send("Error : Some User Related Error Occured");
-    };
-});
 
 app.post('/stripe_webhooks', async (req, res) => {
     console.log("Webhook Called");
@@ -392,6 +360,95 @@ app.post('/stripe_webhooks', async (req, res) => {
     res.status(200).send("Webhook Called");
 
 });
+
+async function update(access_token, planid = 1) {
+
+    try {
+
+        const usr = await Login(access_token);
+
+        if (!usr || !usr.id) {
+            return res.status(404).send("Error: User authentication failed or user not found.");
+        }
+
+        const [planResponse, userResponse] = await Promise.all([
+            supabase.from("Plans").select("*").eq("Pid", planid),
+            supabase.from("Customers").select("*").eq("UUID", usr.id)
+        ]);
+
+        const planData = planResponse.data;
+        let userData = userResponse.data;
+        let product;
+        let customer;
+
+        console.log(usr);
+
+        if (!planData || !planData.length) {
+            return res.status(404).send("Error: Plan not found");
+        }
+        else {
+            console.log(planData);
+            if (!(planData[0].PlanStripeID) || (planData[0].PlanStripeID == null)) {
+
+                console.log("Creating Product");
+
+                product = await stripe.products.create({
+                    name: planData[0].PlanName,
+                    default_price_data: {
+                        unit_amount: planData[0].Price * 100,
+                        currency: 'eur',
+                        recurring: {
+                            interval: 'month',
+                        },
+                    },
+                    description: planData[0].PlanDescription,
+                });
+
+                product = await supabase.from("Plans").update({ PlanStripeID: product.id, Price_ID: product.default_price }).eq("Pid", planid).select();
+                product = product.data[0];
+            }
+            else {
+                product = planData[0];
+            }
+            console.log(product);
+        }
+
+        if (!userData || !userData.length) {
+            const stripecustomer = await stripe.customers.create({
+                email: usr.email,
+                name: usr.user.name,
+            });
+
+            console.log('Customer created : ', stripecustomer);
+            customer = (await supabase.from("Customers").insert([{ UUID: usr.id, StripeCustID: stripecustomer.id }]).select()).data;
+        }
+        else {
+            if (!(userData[0].StripeCustID)) {
+                const stripecustomer = await stripe.customers.create({
+                    email: usr.email,
+                    name: usr.user.name,
+                });
+                customer = (await supabase.from("Customers").update([{ UUID: usr.id, StripeCustID: stripecustomer.id }]).eq("UUID", usr.id).select()).data;
+            }
+            else {
+                customer = userData[0];
+            }
+        }
+
+        const subscription = await stripe.subscriptions.create({
+            customer: customer.StripeCustID,
+            items: [{ plan: product.PlanStripeID }],
+        });
+
+        console.log(subscription);
+
+        return customer.StripeCustID;
+    } catch (err) {
+        console.error("Error:", err);
+        return res.status(500).send("Error: An unexpected error occurred");
+    }
+
+}
 
 app.post('/getStripe', async (req, res) => {
     try {
@@ -472,8 +529,8 @@ app.post('/getStripe', async (req, res) => {
 
         try {
             session = await stripe.checkout.sessions.create({
-                success_url: 'https://www.google.com',
-                cancel_url: 'https://www.facebook.com',
+                success_url: 'https://www.yadocs.com/PaySuccess',
+                cancel_url: 'https://www.yadocs.com/PayFailed',
                 customer: customer.StripeCustID,
                 line_items: [{
                     price: product.Price_ID,
@@ -490,7 +547,6 @@ app.post('/getStripe', async (req, res) => {
         console.log(session);
 
         return res.status(200).send(session.url);
-        return res.status(200).send(userData[0]);
 
     } catch (err) {
         console.error("Error:", err);
@@ -498,10 +554,84 @@ app.post('/getStripe', async (req, res) => {
     }
 });
 
+app.post('/getpaymentlist', async (req, res) => {
+    try {
+        const { access_token, ret_url } = req.body;
+        const usr = await Login(access_token);
+
+        if (usr.status == 200) {
+            const { data, error } = await supabase
+                .from('Customers')
+                .select('*')
+                .eq('UUID', usr.id).single();
+
+            if (error) {
+                console.log('Error getting customer:', error.message);
+                return res.status(400).send("Error : Some Customer Related Error Occured");
+            } else {
+                console.log('Customer retrieved successfully' + data);
+                let stripecustomer;
+                if (data.StripeCustID == null) {
+                    stripecustomer = await update(access_token);
+                }
+
+                const customer = await stripe.billingPortal.sessions.create({
+                    customer: data.StripeCustID ? data.StripeCustID : stripecustomer,
+                    return_url: ret_url ? ret_url : "https://www.yadocs.com",
+                });
+
+                return res.status(200).send({ status: 2, msg: "success", link: customer });
+            }
+        }
+    }
+    catch (err) {
+        console.log(err);
+        res.status(404).send("Error : Some User Related Error Occured");
+    };
+});
+
+
 app.listen(port, () => {
     console.log(`Example app listening at http://localhost:${port}`)
 });
 
+let index = 0;
+let arr = [`Left-justifying paragraphs of text is good. Centering paragraphs of text is bad. Skilled readers
+automatically move their eyes to the same left margin and down one line when reading paragaphs of text.
+If the text is centered, the automatic movements of the eye end up at the wrong place. This slows down reading and could interfere with comprehension.`, `Your continued donations keep Wikipedia running!
+Main Page
+From Hikipedia, the free encyclopedia
+Jump to: navigation, search
+Welcome to Wikipedia, the free encyclopedia that anyone can edit.
+In this English version, started in 2001, we are currently working on 1,024,885 articles.
+Overview Questions
+-
+Categories
+-
+-
+A?Z Portals
+Site news Donations
+Arts | Biography | Geography | History | Mathematics | Science | Society | Technology
+Today's featured article
+In the news
+Lennart Meri
+*Former President of Estonia Lennart Meri (pictured) dies. * Venezuela adopts a new flag. * Former Yugoslav leader Slobodan Milo?evi? dies in his prison cell in The Hague, Netherlands. * NASA's Mars Reconnaissance
+The Palazzo Pitti is a vast, mainly Renaissance palace in Florence, Italy. It is situated on the south side of the River Arno, a short distance from the Ponte Vecchio. The core of the present palazzo dates from 1458 and was originally the town residence of Luca Pitti, an ambitious Florentine banker. It was later bought by the Medici family in 1549; as the official residence of the ruling families of the Grand Duchy of Tuscany, it was enlarged and enriched almost continually over the following three centuries. In the 19th century, the palazzo, by then a great treasure house, was used as a power base by Napoleon I, and later served for a brief`];
+
+app.post('/pictotextcon', async (req, res) => {
+
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    if (index == 0 || index == 1) {
+        res.status(200).send(arr[index++]);
+
+    }
+    else {
+        res.status(200).send("Successfully Processing the Image");
+
+    }
+
+});
 
 /*
 

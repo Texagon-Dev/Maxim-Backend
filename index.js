@@ -595,43 +595,6 @@ app.listen(port, () => {
     console.log(`Example app listening at http://localhost:${port}`)
 });
 
-let index = 0;
-let arr = [`Left-justifying paragraphs of text is good. Centering paragraphs of text is bad. Skilled readers
-automatically move their eyes to the same left margin and down one line when reading paragaphs of text.
-If the text is centered, the automatic movements of the eye end up at the wrong place. This slows down reading and could interfere with comprehension.`, `Your continued donations keep Wikipedia running!
-Main Page
-From Hikipedia, the free encyclopedia
-Jump to: navigation, search
-Welcome to Wikipedia, the free encyclopedia that anyone can edit.
-In this English version, started in 2001, we are currently working on 1,024,885 articles.
-Overview Questions
--
-Categories
--
--
-A?Z Portals
-Site news Donations
-Arts | Biography | Geography | History | Mathematics | Science | Society | Technology
-Today's featured article
-In the news
-Lennart Meri
-*Former President of Estonia Lennart Meri (pictured) dies. * Venezuela adopts a new flag. * Former Yugoslav leader Slobodan Milo?evi? dies in his prison cell in The Hague, Netherlands. * NASA's Mars Reconnaissance
-The Palazzo Pitti is a vast, mainly Renaissance palace in Florence, Italy. It is situated on the south side of the River Arno, a short distance from the Ponte Vecchio. The core of the present palazzo dates from 1458 and was originally the town residence of Luca Pitti, an ambitious Florentine banker. It was later bought by the Medici family in 1549; as the official residence of the ruling families of the Grand Duchy of Tuscany, it was enlarged and enriched almost continually over the following three centuries. In the 19th century, the palazzo, by then a great treasure house, was used as a power base by Napoleon I, and later served for a brief`];
-
-app.post('/pictotextcon', async (req, res) => {
-
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    if (index == 0 || index == 1) {
-        res.status(200).send(arr[index++]);
-
-    }
-    else {
-        res.status(200).send("Successfully Processing the Image");
-
-    }
-
-});
 
 /*
 

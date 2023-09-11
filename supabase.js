@@ -46,6 +46,7 @@ export const updateallowedquestion = async (ChatID, UUID) => {
 }
 
 export const Login = async (jwt) => {
+
     const { data, error } = await supabase.auth.getUser(jwt);
     if (error) {
         console.error(error);
@@ -76,6 +77,7 @@ export const Login = async (jwt) => {
 }
 
 export const CheckTable = async (jwt) => {
+
     const usr = await Login(jwt);
     if ((usr).status !== 200) {
         console.log("Login Failed");
@@ -281,7 +283,7 @@ export const Query = async (query, Document) => {
     //         queryName: RPCFuncName,
     //     }
 
-    const relevantDocs = await vectorStore.similaritySearch(query,undefined, {
+    const relevantDocs = await vectorStore.similaritySearch(query, undefined, {
         source: "./uploads/" + Document,
     });
 

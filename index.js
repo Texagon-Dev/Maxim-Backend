@@ -68,10 +68,14 @@ app.post('/CreateChat', upload.single('file'), async (req, res) => {
     const { access_token } = req.body;
 
     let FileUploadSuccess = false;
+
     const usr = await CheckTable(access_token);
+
     if (usr == false) {
-        return res.status(404).send("Error : User Not Found");
+        return res.status(401).send("Error : User Not Found");
     }
+
+
     const userdata = await supabase.from('Customers').select('*').eq('UUID', usr.id);
     if (userdata.data[0].bookuploads > 0) {
         await supabase.from('Customers').update({ bookuploads: userdata.data[0].bookuploads - 1 }).eq('UUID', usr.id);
@@ -190,10 +194,9 @@ app.post('/GetAllChats', async (req, res) => {
                 console.log('Error getting chat logs:', error.message);
                 return;
             }
-            //console.log(data);
             res.status(200).send(data);
         } else {
-            res.status(404).send("Error : User Not Found");
+            return res.status(401).send("Error : User Not Found");
         }
     }
     catch (err) {
@@ -350,7 +353,7 @@ app.post('/DelChat', async (req, res) => {
 
 import Stripe from 'stripe';
 
-const stripe = new Stripe('sk_test_51NaO1CIl5R3y4OKwaBGFtZiTu6Grm2iaaRmMmEyHFgRO3KetxMgORT3ONyFoZw1qIbbLBrzbG6bNw5sfHG8ss34L009CU6AYdU');
+const stripe = new Stripe('sk_test_51NnPYYEG5HXSwBYisvgUEPcemkoFccxzfiTzKHic6ph67LyIRrMelKHxfiaFik6Q8SHXIBMBnFdHoEUmQQYEeUHX000urjdAr3');
 
 
 app.post('/stripe_webhooks', async (req, res) => {
@@ -467,65 +470,43 @@ app.post('/getStripe', async (req, res) => {
 
         const planData = planResponse.data;
         let userData = userResponse.data;
-        let product;
-        let customer;
+        let product = planData[0];
+        let customer = userData[0];
+        let session;
 
-        console.log(usr);
+        if (!planData[0].PlanStripeID) {
+            console.log("Creating Product.....");
 
-        if (!planData || !planData.length) {
-            return res.status(404).send("Error: Plan not found");
-        }
-        else {
-            console.log(planData);
-            if (!(planData[0].PlanStripeID) || (planData[0].PlanStripeID == null)) {
-
-                console.log("Creating Product");
-
-                product = await stripe.products.create({
-                    name: planData[0].PlanName,
-                    default_price_data: {
-                        unit_amount: planData[0].Price * 100,
-                        currency: 'eur',
-                        recurring: {
-                            interval: 'month',
-                        },
+            product = await stripe.products.create({
+                name: planData[0].PlanName,
+                default_price_data: {
+                    unit_amount: planData[0].Price * 100,
+                    currency: 'eur',
+                    recurring: {
+                        interval: 'month',
                     },
-                    description: planData[0].PlanDescription,
-                });
+                },
+                description: planData[0].PlanDescription,
+            });
 
-                product = await supabase.from("Plans").update({ PlanStripeID: product.id, Price_ID: product.default_price }).eq("Pid", planid).select();
-                product = product.data[0];
-            }
-            else {
-                product = planData[0];
-            }
-            console.log(product);
+            product = await supabase.from("Plans").update({ PlanStripeID: product.id, Price_ID: product.default_price }).eq("Pid", planid).select();
+            product = product.data[0];
         }
 
-        if (!userData || !userData.length) {
+        if(!userData[0].StripeCustID){
+
+            console.log("Creating Customer..... with ", usr.user.email);
             const stripecustomer = await stripe.customers.create({
-                email: usr.email,
+                email: usr.user.email,
                 name: usr.user.name,
             });
 
             console.log('Customer created : ', stripecustomer);
-            customer = (await supabase.from("Customers").insert([{ UUID: usr.id, StripeCustID: stripecustomer.id }]).select()).data;
-        }
-        else {
-            if (!(userData[0].StripeCustID)) {
-                const stripecustomer = await stripe.customers.create({
-                    email: usr.email,
-                    name: usr.user.name,
-                });
-                customer = (await supabase.from("Customers").update([{ UUID: usr.id, StripeCustID: stripecustomer.id }]).eq("UUID", usr.id).select()).data;
-            }
-            else {
-                customer = userData[0];
-            }
-        }
 
+            customer = (await supabase.from("Customers").update([{ UUID: usr.id, StripeCustID: stripecustomer.id }]).eq("UUID", usr.id).select()).data[0];
 
-        let session;
+            console.log(customer);
+        }
 
         try {
             session = await stripe.checkout.sessions.create({
@@ -541,10 +522,10 @@ app.post('/getStripe', async (req, res) => {
         }
         catch (err) {
             res.status(500).json({ "error_message": "Error in creating checkout session", "error": err })
-            return
+            return;
         }
 
-        console.log(session);
+        //console.log(session);
 
         return res.status(200).send(session.url);
 
@@ -583,6 +564,7 @@ app.post('/getpaymentlist', async (req, res) => {
                 return res.status(200).send({ status: 2, msg: "success", link: customer });
             }
         }
+        res.send(401).send("Error : User Not Found");
     }
     catch (err) {
         console.log(err);

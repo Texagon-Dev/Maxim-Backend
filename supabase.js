@@ -85,8 +85,8 @@ export const CheckTable = async (jwt) => {
     }
 
     const { data, error } = await supabase.rpc('create_matchdoc_rpc', {
-        table_name: currentLoggedInUser.id,
         vf_name: currentLoggedInUser.id + "_vf",
+        table_name: currentLoggedInUser.id,
     });
 
     return usr;

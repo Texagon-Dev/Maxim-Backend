@@ -12,7 +12,7 @@ import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 
 import OpenAI from "openai";
 const openaicom = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+    apiKey: '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',
 });
 
 dotenv.config();

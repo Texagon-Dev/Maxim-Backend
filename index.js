@@ -46,17 +46,6 @@ const watcher = chokidar.watch('uploads', {
 
 let clients = [];
 
-function sendUpdates(message) {
-    clients.forEach(client =>
-        client.res.write(`data: ${JSON.stringify(message)}\n\n`)
-    );
-
-    // Remove clients whose connection was closed
-    clients = clients.filter(client =>
-        client.res.finished === false
-    );
-}
-
 app.get('/', (req, res) => {
     res.send('Welcome to Maximm! Version == 1.0.1');
 });

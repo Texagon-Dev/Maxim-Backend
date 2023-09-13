@@ -58,7 +58,7 @@ function sendUpdates(message) {
 }
 
 app.get('/', (req, res) => {
-    res.send('Welcome to Maximm! Version == 1.0.0');
+    res.send('Welcome to Maximm! Version == 1.0.1');
 });
 
 

@@ -9,6 +9,9 @@ import { CSVLoader } from "langchain/document_loaders/fs/csv";
 import { TextLoader } from "langchain/document_loaders/fs/text";
 import { DocxLoader } from "langchain/document_loaders/fs/docx";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+import OpenAI from "openai";
+
+
 
 dotenv.config();
 

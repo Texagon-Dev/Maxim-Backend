@@ -10,12 +10,13 @@ import { TextLoader } from "langchain/document_loaders/fs/text";
 import { DocxLoader } from "langchain/document_loaders/fs/docx";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 
+dotenv.config();
+
 import OpenAI from "openai";
 const openaicom = new OpenAI({
     apiKey: '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',
 });
 
-dotenv.config();
 
 const privateKey = process.env.SUPABASE_PRIVATE_KEY;
 if (!privateKey) throw new Error(`Expected env var SUPABASE_PRIVATE_KEY`);

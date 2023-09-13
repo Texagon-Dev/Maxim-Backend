@@ -306,12 +306,12 @@ export const Query = async (query, Document) => {
         question: query,
     });
 
-    const chatCompletion = await openai.chat.completions.create({
+    const chatCompletion = await openaicom.chat.completions.create({
         messages: [{role:"system",content:"Convert the Text to French."},{ role: "user", content: "Say this is a test" }],
         model: "gpt-3.5-turbo",
     });
 
-    console.log(chatCompletion);
+    console.log(chatCompletion.choices);
 
     return {
         result: result.text,

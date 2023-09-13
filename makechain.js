@@ -33,7 +33,7 @@ export const makeChain = () => {
     {context}
     ------------
     Given the new context, refine the original answer to better answer the question.
-    You must provide a response, either original answer or refined answer.The Answer must given in French.`;
+    You must provide a response, either original answer or refined answer.The Answer must given in French. Convert your answer to French Language.`;
 
     const refinePrompt = new PromptTemplate({
         inputVariables: ["question", "existing_answer", "context"],

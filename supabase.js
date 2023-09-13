@@ -274,14 +274,6 @@ export const Query = async (query, Document) => {
         }
     );
 
-
-    // new OpenAIEmbeddings(),
-    //     {
-    //         client: supabase,
-    //         tableName: DocumentName,
-    //         queryName: RPCFuncName,
-    //     }
-
     const relevantDocs = await vectorStore.similaritySearch(query, undefined, {
         source: "./uploads/" + Document,
     });
@@ -308,53 +300,9 @@ export const Query = async (query, Document) => {
         context: relevantDocs,
         question: query,
     });
-    console.log({
-        result: result.text,
-        sources: sources
-    });
-
 
     return {
         result: result.text,
         sources: sources
     };
 }
-
-// export const Query = async (query, Document) => {
-
-//     let loader = null;
-//     let docs = null;
-
-//     console.log("Query from Supabase : ", query);
-//     console.log("Document : " + DocumentName);
-//     console.log("RPC : " + RPCFuncName);
-
-//     const vectorStore = await SupabaseVectorStore.fromExistingIndex(
-//         new OpenAIEmbeddings(),
-//         {
-//             client: supabase,
-//             tableName: DocumentName,
-//             queryName: RPCFuncName,
-//         }
-//     );
-
-
-//     const relevantDocs = await vectorStore.similaritySearch(query, undefined, {
-//         source: "./uploads/" + Document,
-//     });
-
-//     const chain = mk(vectorStore, "./uploads/" + Document);
-//     const result = await chain.call({
-//         input_documents: relevantDocs,
-//         question: query,
-//         context: docs,
-//         chat_history: [],
-//     });
-//     return result;
-
-
-//     return {
-//         result: result.text,
-//         sources: sources
-//     };
-// }

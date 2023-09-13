@@ -9,9 +9,11 @@ import { CSVLoader } from "langchain/document_loaders/fs/csv";
 import { TextLoader } from "langchain/document_loaders/fs/text";
 import { DocxLoader } from "langchain/document_loaders/fs/docx";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+
 import OpenAI from "openai";
-
-
+const openaicom = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+});
 
 dotenv.config();
 
@@ -303,6 +305,13 @@ export const Query = async (query, Document) => {
         context: relevantDocs,
         question: query,
     });
+
+    const chatCompletion = await openai.chat.completions.create({
+        messages: [{role:"system",content:"Convert the Text to French."},{ role: "user", content: "Say this is a test" }],
+        model: "gpt-3.5-turbo",
+    });
+
+    console.log(chatCompletion);
 
     return {
         result: result.text,

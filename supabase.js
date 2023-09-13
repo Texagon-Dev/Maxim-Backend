@@ -307,14 +307,14 @@ export const Query = async (query, Document) => {
     });
 
     const chatCompletion = await openaicom.chat.completions.create({
-        messages: [{role:"system",content:"Convert the Text to French."},{ role: "user", content: "Say this is a test" }],
+        messages: [{role:"system",content:"Convert the Text to French."},{ role: "user", content: result.text }],
         model: "gpt-3.5-turbo",
     });
 
-    console.log(chatCompletion.choices);
+    console.log(chatCompletion.choices[0].message.content);
 
     return {
-        result: result.text,
+        result: chatCompletion.choices[0].message.content,
         sources: sources
     };
 }

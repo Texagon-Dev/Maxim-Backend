@@ -9,10 +9,10 @@ import { loadQAStuffChain } from "langchain/chains";
 export const makeChain = () => {
 
     const questionPromptTemplateString = `You are a helpful AI assistant. Use the following pieces of context to answer the question at the end.
-    If you don't know the answer, just say you don't know in French Language . DO NOT try to make up an answer.
+    If you don't know the answer, just say you don't know. DO NOT try to make up an answer.
     If the question is not related to the context, politely respond that you are tuned to only answer questions that are related to the context.
     If there are steps to the answer, please include them in your answer. Also place \n
-    between steps to make your answer more readable. The Answer must given in French Language. Format your answer to be in markdown.
+    between steps to make your answer more readable. The Answer must given in Question's Language. Format your answer to be in markdown.
 
     {context}
 
@@ -33,7 +33,7 @@ export const makeChain = () => {
     {context}
     ------------
     Given the new context, refine the original answer to better answer the question.
-    You must provide a response, either original answer or refined answer.The Answer must given in French. Convert your answer to French Language.`;
+    You must provide a response, either original answer or refined answer.The Answer must given in Question's Language.`;
 
     const refinePrompt = new PromptTemplate({
         inputVariables: ["question", "existing_answer", "context"],

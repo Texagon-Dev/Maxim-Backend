@@ -526,6 +526,9 @@ app.post('/getpaymentlist', async (req, res) => {
                 let stripecustomer;
                 if (data.StripeCustID == null) {
                     stripecustomer = await update(access_token);
+                    return res.status(200).send({
+                        status:5,msg:"Failed",link:"https://yadocs.com/pricing"
+                    })
                 }
                 else {
                     const customer = await stripe.billingPortal.sessions.create({

@@ -34,7 +34,7 @@ export const makeChain = () => {
     {context}
     ------------
     Given the new context, refine the original answer to better answer the question.
-    You must provide a response, either original answer or refined answer.The Answer must given in Question's Language.`;
+    You must provide a response, either original answer or refined answer.The Answer must given in Question's Language.Format your answer to be in markdown`;
 
     const refinePrompt = new PromptTemplate({
         inputVariables: ["question", "existing_answer", "context"],

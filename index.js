@@ -508,6 +508,9 @@ app.post('/getStripe', async (req, res) => {
                 }],
                 mode: 'subscription',
             });
+
+
+            console.log(session);
         }
         catch (err) {
             res.status(500).json({ "error_message": "Error in creating checkout session", "error": err })

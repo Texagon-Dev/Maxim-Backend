@@ -409,13 +409,11 @@ async function update(access_token, planid = 1) {
         }
 
 
-        // const subscription = await stripe.subscriptions.create({
-        //     customer: customer.StripeCustID,
-        //     items: [{ plan: product.PlanStripeID }],
-        // });
+        const subscription = await stripe.subscriptions.create({
+            customer: customer.StripeCustID,
+            items: [{ plan: product.PlanStripeID }],
+        });
 
-        //console.log(subscription);
-        console.log(customer);
         return customer.StripeCustID;
     } catch (err) {
         console.error("Error:", err);

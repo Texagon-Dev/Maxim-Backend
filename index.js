@@ -370,69 +370,51 @@ async function update(access_token, planid = 1) {
 
         const planData = planResponse.data;
         let userData = userResponse.data;
-        let product;
-        let customer;
+        let product = planData[0];
+        let customer = userData[0];
+        let session;
 
-        console.log(usr);
+        if (!planData[0].PlanStripeID) {
+            console.log("Creating Product.....");
 
-        if (!planData || !planData.length) {
-            return res.status(404).send("Error: Plan not found");
-        }
-        else {
-            console.log(planData);
-            if (!(planData[0].PlanStripeID) || (planData[0].PlanStripeID == null)) {
-
-                console.log("Creating Product");
-
-                product = await stripe.products.create({
-                    name: planData[0].PlanName,
-                    default_price_data: {
-                        unit_amount: planData[0].Price * 100,
-                        currency: 'eur',
-                        recurring: {
-                            interval: 'month',
-                        },
+            product = await stripe.products.create({
+                name: planData[0].PlanName,
+                default_price_data: {
+                    unit_amount: planData[0].Price * 100,
+                    currency: 'eur',
+                    recurring: {
+                        interval: 'month',
                     },
-                    description: planData[0].PlanDescription,
-                });
+                },
+                description: planData[0].PlanDescription,
+            });
 
-                product = await supabase.from("Plans").update({ PlanStripeID: product.id, Price_ID: product.default_price }).eq("Pid", planid).select();
-                product = product.data[0];
-            }
-            else {
-                product = planData[0];
-            }
-            console.log(product);
+            product = await supabase.from("Plans").update({ PlanStripeID: product.id, Price_ID: product.default_price }).eq("Pid", planid).select();
+            product = product.data[0];
         }
 
-        if (!userData || !userData.length) {
+        if (!userData[0].StripeCustID) {
+
+            console.log("Creating Customer..... with ", usr.user.email);
             const stripecustomer = await stripe.customers.create({
-                email: usr.email,
+                email: usr.user.email,
                 name: usr.user.name,
             });
 
             console.log('Customer created : ', stripecustomer);
-            customer = (await supabase.from("Customers").insert([{ UUID: usr.id, StripeCustID: stripecustomer.id }]).select()).data;
-        }
-        else {
-            if (!(userData[0].StripeCustID)) {
-                const stripecustomer = await stripe.customers.create({
-                    email: usr.email,
-                    name: usr.user.name,
-                });
-                customer = (await supabase.from("Customers").update([{ UUID: usr.id, StripeCustID: stripecustomer.id }]).eq("UUID", usr.id).select()).data;
-            }
-            else {
-                customer = userData[0];
-            }
+
+            customer = (await supabase.from("Customers").update([{ UUID: usr.id, StripeCustID: stripecustomer.id }]).eq("UUID", usr.id).select()).data[0];
+
+            console.log(customer);
         }
 
-        const subscription = await stripe.subscriptions.create({
-            customer: customer.StripeCustID,
-            items: [{ plan: product.PlanStripeID }],
-        });
 
-        console.log(subscription);
+        // const subscription = await stripe.subscriptions.create({
+        //     customer: customer.StripeCustID,
+        //     items: [{ plan: product.PlanStripeID }],
+        // });
+
+        //console.log(subscription);
         console.log(customer);
         return customer.StripeCustID;
     } catch (err) {

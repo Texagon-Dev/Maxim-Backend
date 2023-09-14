@@ -433,7 +433,7 @@ async function update(access_token, planid = 1) {
         });
 
         console.log(subscription);
-
+        console.log(customer);
         return customer.StripeCustID;
     } catch (err) {
         console.error("Error:", err);

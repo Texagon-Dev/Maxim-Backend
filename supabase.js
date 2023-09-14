@@ -306,13 +306,11 @@ export const Query = async (query, Document) => {
         context: relevantDocs,
         question: query,
     });
-
+    
     const chatCompletion = await openaicom.chat.completions.create({
         messages: [{role:"system",content:"Convert the Text to French. Provide your answer to be in markdown"},{ role: "user", content: result.text }],
         model: "gpt-3.5-turbo-16k",
     });
-
-
 
     return {
         result: chatCompletion.choices[0].message.content,

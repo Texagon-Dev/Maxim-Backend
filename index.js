@@ -437,7 +437,7 @@ async function update(access_token, planid = 1) {
         return customer.StripeCustID;
     } catch (err) {
         console.error("Error:", err);
-        return res.status(500).send("Error: An unexpected error occurred");
+        return "Error: An unexpected error occurred";
     }
 
 }
@@ -482,7 +482,7 @@ app.post('/getStripe', async (req, res) => {
             product = product.data[0];
         }
 
-        if(!userData[0].StripeCustID){
+        if (!userData[0].StripeCustID) {
 
             console.log("Creating Customer..... with ", usr.user.email);
             const stripecustomer = await stripe.customers.create({

@@ -525,7 +525,7 @@ app.post('/getpaymentlist', async (req, res) => {
                 console.log('Customer retrieved successfully' + data);
                 let stripecustomer;
                 if (data.StripeCustID == null) {
-                    stripecustomer = await update(access_token);
+                    //stripecustomer = await update(access_token);
                     return res.status(200).send({
                         status:5,msg:"Failed",link:"https://yadocs.com/pricing"
                     })

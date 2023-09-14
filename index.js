@@ -409,10 +409,10 @@ async function update(access_token, planid = 1) {
         }
 
 
-        const subscription = await stripe.subscriptions.create({
-            customer: customer.StripeCustID,
-            items: [{ plan: product.PlanStripeID }],
-        });
+        // const subscription = await stripe.subscriptions.create({
+        //     customer: customer.StripeCustID,
+        //     items: [{ plan: product.PlanStripeID }],
+        // });
 
         return customer.StripeCustID;
     } catch (err) {
@@ -527,13 +527,14 @@ app.post('/getpaymentlist', async (req, res) => {
                 if (data.StripeCustID == null) {
                     stripecustomer = await update(access_token);
                 }
+                else {
+                    const customer = await stripe.billingPortal.sessions.create({
+                        customer: data.StripeCustID ? data.StripeCustID : stripecustomer,
+                        return_url: ret_url ? ret_url : "https://www.yadocs.com",
+                    });
 
-                const customer = await stripe.billingPortal.sessions.create({
-                    customer: data.StripeCustID ? data.StripeCustID : stripecustomer,
-                    return_url: ret_url ? ret_url : "https://www.yadocs.com",
-                });
-
-                return res.status(200).send({ status: 2, msg: "success", link: customer });
+                    return res.status(200).send({ status: 2, msg: "success", link: customer });
+                }
             }
         }
         res.send(401).send("Error : User Not Found");

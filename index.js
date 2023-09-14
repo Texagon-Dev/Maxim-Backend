@@ -544,12 +544,12 @@ app.post('/getpaymentlist', async (req, res) => {
             } else {
                 console.log('Customer retrieved successfully' + data);
                 let stripecustomer;
-                if (data.StripeCustID == null) {
+                if (data[0].StripeCustID == null) {
                     stripecustomer = await update(access_token);
                 }
 
                 const customer = await stripe.billingPortal.sessions.create({
-                    customer: data.StripeCustID ? data.StripeCustID : stripecustomer,
+                    customer: data[0].StripeCustID ? data[0].StripeCustID : stripecustomer,
                     return_url: ret_url ? ret_url : "https://www.yadocs.com",
                 });
 

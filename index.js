@@ -11,6 +11,16 @@ global.fetch = fetch;
 global.Headers = Headers;
 global.Request = Request;
 
+import Stripe from 'stripe';
+const stripe = new Stripe('sk_test_51NnPYYEG5HXSwBYisvgUEPcemkoFccxzfiTzKHic6ph67LyIRrMelKHxfiaFik6Q8SHXIBMBnFdHoEUmQQYEeUHX000urjdAr3');
+
+app.post('/stripe_webhooks', async (req, res) => {
+    console.log("Webhook Called");
+    const event = req.body;
+    console.log(event);
+    res.status(200).send("Webhook Called");
+});
+
 
 const app = express();
 app.use(cors());
@@ -340,19 +350,6 @@ app.post('/DelChat', async (req, res) => {
     };
 });
 
-import Stripe from 'stripe';
-
-const stripe = new Stripe('sk_test_51NnPYYEG5HXSwBYisvgUEPcemkoFccxzfiTzKHic6ph67LyIRrMelKHxfiaFik6Q8SHXIBMBnFdHoEUmQQYEeUHX000urjdAr3');
-
-
-app.post('/stripe_webhooks', async (req, res) => {
-    console.log("Webhook Called");
-    const event = req.body;
-    console.log(event);
-    res.status(200).send("Webhook Called");
-
-});
-
 async function update(access_token, planid = 1) {
 
     try {
@@ -527,7 +524,7 @@ app.post('/getpaymentlist', async (req, res) => {
                 if (data.StripeCustID == null) {
                     //stripecustomer = await update(access_token);
                     return res.status(200).send({
-                        status:5,msg:"Failed",link:"https://yadocs.com/pricing"
+                        status: 5, msg: "Failed", link: "https://yadocs.com/pricing"
                     })
                 }
                 else {

@@ -11,6 +11,8 @@ global.fetch = fetch;
 global.Headers = Headers;
 global.Request = Request;
 
+const app = express();
+
 import Stripe from 'stripe';
 const stripe = new Stripe('sk_test_51NnPYYEG5HXSwBYisvgUEPcemkoFccxzfiTzKHic6ph67LyIRrMelKHxfiaFik6Q8SHXIBMBnFdHoEUmQQYEeUHX000urjdAr3');
 
@@ -22,7 +24,6 @@ app.post('/stripe_webhooks', async (req, res) => {
 });
 
 
-const app = express();
 app.use(cors());
 app.use(express.json());
 const port = process.env.PORT || 3000;

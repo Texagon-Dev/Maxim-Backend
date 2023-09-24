@@ -16,7 +16,7 @@ const app = express();
 import Stripe from 'stripe';
 const stripe = new Stripe('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');
 
-const endpointSecret = "whsec_ac46d398e93cf678a1de38b765aff3bb7d10b7019dec9c44bbc1e4b6f2c02acf";
+const endpointSecret = "whsec_qvk9uvugt90HM5k8buf2tWalfDsCGrPn";
 
 app.post('/stripe_webhooks', express.raw({ type: 'application/json' }), async (request, response) => {
     const sig = request.headers['stripe-signature'];

@@ -14,13 +14,65 @@ global.Request = Request;
 const app = express();
 
 import Stripe from 'stripe';
-const stripe = new Stripe('sk_test_51NnPYYEG5HXSwBYisvgUEPcemkoFccxzfiTzKHic6ph67LyIRrMelKHxfiaFik6Q8SHXIBMBnFdHoEUmQQYEeUHX000urjdAr3');
+const stripe = new Stripe('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');
 
-app.post('/stripe_webhooks', async (req, res) => {
-    console.log("Webhook Called");
-    const event = req.body;
-    console.log(event);
-    res.status(200).send("Webhook Called");
+const endpointSecret = "whsec_ac46d398e93cf678a1de38b765aff3bb7d10b7019dec9c44bbc1e4b6f2c02acf";
+
+app.post('/stripe_webhooks', express.raw({ type: 'application/json' }), async (request, response) => {
+    const sig = request.headers['stripe-signature'];
+
+    let event;
+
+    try {
+        event = stripe.webhooks.constructEvent(request.body, sig, endpointSecret);
+    } catch (err) {
+        response.status(400).send(`Webhook Error: ${err.message}`);
+        return;
+    }
+
+    // Handle the event
+    switch (event.type) {
+        case 'customer.subscription.deleted':
+            const customerSubscriptionDeleted = event.data.object;
+            console.log("The Customer Subscription is Deleted.");
+            console.log(customerSubscriptionDeleted.customer);
+            await supabase.from('Customers').update({ bookuploads: 5 }, {
+                plan: 1
+            },
+                {
+                    allowedquestions: 20
+                }).eq('StripeCustID', customerSubscriptionDeleted.customer);
+            break;
+        case 'customer.subscription.updated':
+            const customerSubscriptionUpdated = event.data.object;
+
+            if (customerSubscriptionUpdated.cancel_at_period_end) {
+                console.log("Hello World Data : ", customerSubscriptionUpdated)
+                // Alert the Structure to be Cancelled at the Period End
+
+                return;
+            }
+
+            if (customerSubscriptionUpdated.status == 'active') {
+                const plan = customerSubscriptionUpdated.plan;
+                console.log(plan.active ? plan.product : "No Plan Active Currently")
+
+                const plandata = await supabase.from('Plans').select('*').eq('PlanStripeID', plan.product);
+
+                await supabase.from('Customers').update({
+                    bookuploads: plandata.data[0].bc,
+                    Plan: plandata.data[0].Pid,
+                    allowedquestions: plandata.data[0].qps
+                }).eq('StripeCustID', customerSubscriptionUpdated.customer);
+            }
+
+            console.log("The Customer Subscription is Updated.");
+            console.log(customerSubscriptionUpdated);
+            break;
+        default:
+            console.log(`Unhandled event type ${event.type}`);
+    }
+    response.status(200).send();
 });
 
 
@@ -467,6 +519,11 @@ app.post('/getStripe', async (req, res) => {
                 email: usr.user.email,
                 name: usr.user.name,
             });
+
+            await stripe.Subscription.create(
+                customer = stripecustomer.id,
+                items = [{ 'price': 'price_1NpaICEG5HXSwBYiUGZ7sgTC' }],
+            )
 
             console.log('Customer created : ', stripecustomer);
 

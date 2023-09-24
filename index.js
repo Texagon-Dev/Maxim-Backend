@@ -558,7 +558,7 @@ app.post('/getStripe', async (req, res) => {
 
     } catch (err) {
         console.error("Error:", err);
-        return res.status(500).send("Error: An unexpected error occurred");
+        return res.status(500).send("Error: An unexpected error occurred ",err);
     }
 });
 

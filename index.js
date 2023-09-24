@@ -520,10 +520,10 @@ app.post('/getStripe', async (req, res) => {
                 name: usr.user.name,
             });
 
-            // await stripe.subscriptions.create(
-            //     customer = stripecustomer.id,
-            //     items = [{ 'price': 'price_1NpaICEG5HXSwBYiUGZ7sgTC' }],
-            // )
+            await stripe.subscriptions.create(
+                customer = stripecustomer.id,
+                items = [{ 'price': 'price_1NtzLhEG5HXSwBYiXVtFzxhu' }],
+            )
 
             console.log('Customer created : ', stripecustomer);
 

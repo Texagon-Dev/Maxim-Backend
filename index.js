@@ -520,10 +520,12 @@ app.post('/getStripe', async (req, res) => {
                 name: usr.user.name,
             });
 
-            await stripe.subscriptions.create(
-                customer = stripecustomer.id,
-                items = [{ 'price': 'price_1NtzLhEG5HXSwBYiXVtFzxhu' }],
-            )
+            const subscription = await stripe.subscriptions.create({
+                customer: stripecustomer.id,
+                items: [
+                    { price: 'price_1NtzLhEG5HXSwBYiXVtFzxhu' },
+                ],
+            });
 
             console.log('Customer created : ', stripecustomer);
 
@@ -560,7 +562,7 @@ app.post('/getStripe', async (req, res) => {
 
     } catch (err) {
         console.error("Error:", err);
-        res.status(404).send({"err":"Error: An unexpected error occurred "});
+        res.status(404).send({ "err": "Error: An unexpected error occurred " });
     }
 });
 

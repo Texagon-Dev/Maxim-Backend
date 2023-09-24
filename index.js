@@ -520,10 +520,10 @@ app.post('/getStripe', async (req, res) => {
                 name: usr.user.name,
             });
 
-            await stripe.Subscription.create(
-                customer = stripecustomer.id,
-                items = [{ 'price': 'price_1NpaICEG5HXSwBYiUGZ7sgTC' }],
-            )
+            // await stripe.subscriptions.create(
+            //     customer = stripecustomer.id,
+            //     items = [{ 'price': 'price_1NpaICEG5HXSwBYiUGZ7sgTC' }],
+            // )
 
             console.log('Customer created : ', stripecustomer);
 
@@ -533,9 +533,12 @@ app.post('/getStripe', async (req, res) => {
         }
 
         try {
+
+            console.log(customer.StripeCustID)
+
             session = await stripe.checkout.sessions.create({
-                success_url: 'https://www.yadocs.com/PaySuccess',
-                cancel_url: 'https://www.yadocs.com/PayFailed',
+                success_url: 'https://yadocs.com/PaySuccess',
+                cancel_url: 'https://yadocs.com/PayFailed',
                 customer: customer.StripeCustID,
                 line_items: [{
                     price: product.Price_ID,
@@ -548,8 +551,7 @@ app.post('/getStripe', async (req, res) => {
             console.log(session);
         }
         catch (err) {
-            res.status(500).json({ "error_message": "Error in creating checkout session", "error": err })
-            return;
+            return res.status(500).json({ "error_message": "Error in creating checkout session", "error": err })
         }
 
         //console.log(session);
@@ -558,7 +560,7 @@ app.post('/getStripe', async (req, res) => {
 
     } catch (err) {
         console.error("Error:", err);
-        return res.status(500).send("Error: An unexpected error occurred ",err);
+        res.status(404).send({"err":"Error: An unexpected error occurred "});
     }
 });
 
@@ -588,7 +590,7 @@ app.post('/getpaymentlist', async (req, res) => {
                 else {
                     const customer = await stripe.billingPortal.sessions.create({
                         customer: data.StripeCustID ? data.StripeCustID : stripecustomer,
-                        return_url: ret_url ? ret_url : "https://www.yadocs.com",
+                        return_url: ret_url ? ret_url : "https://yadocs.com",
                     });
 
                     return res.status(200).send({ status: 2, msg: "success", link: customer });

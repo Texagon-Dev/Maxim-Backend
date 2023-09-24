@@ -69,6 +69,33 @@ app.post('/stripe_webhooks', express.raw({ type: 'application/json' }), async (r
             console.log("The Customer Subscription is Updated.");
             console.log(customerSubscriptionUpdated);
             break;
+        case 'customer.subscription.created':
+            const CustomerSubscriptionCreated = event.data.object;
+
+            if (CustomerSubscriptionCreated.cancel_at_period_end) {
+                console.log("Hello World Data : ", CustomerSubscriptionCreated)
+                // Alert the Structure to be Cancelled at the Period End
+
+                return;
+            }
+
+            if (CustomerSubscriptionCreated.status == 'active') {
+                const plan = CustomerSubscriptionCreated.plan;
+                console.log(plan.active ? plan.product : "No Plan Active Currently")
+
+                const plandata = await supabase.from('Plans').select('*').eq('PlanStripeID', plan.product);
+
+                await supabase.from('Customers').update({
+                    bookuploads: plandata.data[0].bc,
+                    Plan: plandata.data[0].Pid,
+                    allowedquestions: plandata.data[0].qps
+                }).eq('StripeCustID', CustomerSubscriptionCreated.customer);
+            }
+
+            console.log("The Customer Subscription is Updated.");
+            console.log(CustomerSubscriptionCreated);
+            break;
+
         default:
             console.log(`Unhandled event type ${event.type}`);
     }

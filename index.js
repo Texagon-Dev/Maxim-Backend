@@ -14,9 +14,9 @@ global.Request = Request;
 const app = express();
 
 import Stripe from 'stripe';
-const stripe = new Stripe('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');
+const stripe = new Stripe('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');
 
-const endpointSecret = "whsec_qvk9uvugt90HM5k8buf2tWalfDsCGrPn";
+const endpointSecret = "whsec_qvk9uvugt90HM5k8buf2tWalfDsCfGrPn";
 
 app.post('/stripe_webhooks', express.raw({ type: 'application/json' }), async (request, response) => {
     const sig = request.headers['stripe-signature'];
@@ -124,8 +124,6 @@ const storage = multer.diskStorage({
     }
 });
 
-let timeoutId;
-let uploadComplete = false;
 const upload = multer({ storage: storage });
 let uploadFile = null;
 

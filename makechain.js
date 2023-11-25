@@ -1,8 +1,6 @@
 import { OpenAI } from 'langchain/llms/openai';
-import { loadQARefineChain } from "langchain/chains";
 import { OpenAIEmbeddings } from "langchain/embeddings/openai";
 import { PromptTemplate } from "langchain/prompts";
-import { loadQAMapReduceChain } from "langchain/chains";
 
 import { loadQAStuffChain } from "langchain/chains";
 
